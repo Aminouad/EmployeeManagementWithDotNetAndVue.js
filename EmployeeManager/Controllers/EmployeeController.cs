@@ -1,19 +1,26 @@
-﻿using EmployeeManager.Models;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using EmployeeManager.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using System.Data.SqlClient;
+using Microsoft.Extensions.FileProviders;
+using Newtonsoft.Json.Serialization;
 
 namespace EmployeeManager.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class DepartmentController : ControllerBase
+    public class EmployeeController : ControllerBase
     {
         private readonly IConfiguration configuration;
-        public DepartmentController(IConfiguration configuration)
+        private readonly IWebHostEnvironment env;
+
+        public EmployeeController(IConfiguration configuration, IWebHostEnvironment env)
         {
             this.configuration = configuration;
+            this.env = env;
         }
 
 
@@ -22,8 +29,10 @@ namespace EmployeeManager.Controllers
         public JsonResult Get()
         {
             string query = @"
-                            select DepartmentId, DepartmentName from
-                            dbo.Department
+                            select EmployeeId, EmployeeName,Department,
+                            convert(varchar(10),DateOfJoining,120) as DateOfJoining,PhotoFileName
+                            from
+                            dbo.Employee
                             ";
 
             DataTable table = new DataTable();
@@ -47,39 +56,12 @@ namespace EmployeeManager.Controllers
 
 
         [HttpPost]
-        public JsonResult Post(Department dep)
+        public JsonResult Post(Employee emp)
         {
             string query = @"
-                            insert into dbo.Department values (@DepartmentName)
-                            ";
-            DataTable table = new DataTable();
-            string sqlDataSource = this.configuration.GetConnectionString("EmployeeAppCon");
-            SqlDataReader myReader;
-            using(SqlConnection myCon = new SqlConnection(sqlDataSource))
-            {
-                myCon.Open();
-                using(SqlCommand myCommand =new  SqlCommand(query, myCon))
-                {
-                    myCommand.Parameters.AddWithValue("@DepartmentName", dep.DepartmentName);
-                    myReader = myCommand.ExecuteReader();
-                    table.Load(myReader);
-                    myReader.Close();
-                    myCon.Close();
-                }
-            }
-            return new JsonResult("Added Successfully");   
-        }
-
-
-       
-
-        [HttpPut]
-        public JsonResult Put(Department dep)
-        {
-            string query = @"
-                            update  dbo.Department 
-                            set DepartmentName =@DepartmentName
-                            where DepartmentId=@DepartmentId
+                            insert into dbo.Employee
+                            (EmployeeName,Department,DateOfJoining,PhotoFileName)
+                            values (@EmployeeName,@Department,@DateOfJoining,@PhotoFileName)
                             ";
             DataTable table = new DataTable();
             string sqlDataSource = this.configuration.GetConnectionString("EmployeeAppCon");
@@ -89,8 +71,49 @@ namespace EmployeeManager.Controllers
                 myCon.Open();
                 using (SqlCommand myCommand = new SqlCommand(query, myCon))
                 {
-                    myCommand.Parameters.AddWithValue("@DepartmentId", dep.DepartmentId);
-                    myCommand.Parameters.AddWithValue("@DepartmentName", dep.DepartmentName);
+                   
+                    myCommand.Parameters.AddWithValue("@EmployeeName", emp.EmployeeName);
+                    myCommand.Parameters.AddWithValue("@Department", emp.Department);
+                    myCommand.Parameters.AddWithValue("@DateOfJoining", emp.DateOfJoining);
+                    myCommand.Parameters.AddWithValue("@PhotoFileName", emp.PhotoFileName);
+
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+                    myReader.Close();
+                    myCon.Close();
+                }
+            }
+            return new JsonResult("Added Successfully");
+
+        }
+
+
+
+
+        [HttpPut]
+        public JsonResult Put(Employee emp)
+        {
+            string query = @"
+                           update dbo.Employee
+                           set EmployeeName= @EmployeeName,
+                            Department=@Department,
+                            DateOfJoining=@DateOfJoining,
+                            PhotoFileName=@PhotoFileName
+                            where EmployeeId=@EmployeeId
+                            ";
+            DataTable table = new DataTable();
+            string sqlDataSource = this.configuration.GetConnectionString("EmployeeAppCon");
+            SqlDataReader myReader;
+            using (SqlConnection myCon = new SqlConnection(sqlDataSource))
+            {
+                myCon.Open();
+                using (SqlCommand myCommand = new SqlCommand(query, myCon))
+                {
+                    myCommand.Parameters.AddWithValue("@EmployeeId", emp.EmployeeId);
+                    myCommand.Parameters.AddWithValue("@EmployeeName", emp.EmployeeName);
+                    myCommand.Parameters.AddWithValue("@Department", emp.Department);
+                    myCommand.Parameters.AddWithValue("@DateOfJoining", emp.DateOfJoining);
+                    myCommand.Parameters.AddWithValue("@PhotoFileName", emp.PhotoFileName);
                     myReader = myCommand.ExecuteReader();
                     table.Load(myReader);
                     myReader.Close();
@@ -106,9 +129,9 @@ namespace EmployeeManager.Controllers
         public JsonResult Delete(int id)
         {
             string query = @"
-                            delete from dbo.Department 
+                            delete from dbo.Employee 
                             
-                            where DepartmentId=@DepartmentId
+                            where EmployeeId=@EmployeeId
                             ";
             DataTable table = new DataTable();
             string sqlDataSource = this.configuration.GetConnectionString("EmployeeAppCon");
@@ -118,7 +141,7 @@ namespace EmployeeManager.Controllers
                 myCon.Open();
                 using (SqlCommand myCommand = new SqlCommand(query, myCon))
                 {
-                    myCommand.Parameters.AddWithValue("@DepartmentId", id);
+                    myCommand.Parameters.AddWithValue("@EmployeeId", id);
                     myReader = myCommand.ExecuteReader();
                     table.Load(myReader);
                     myReader.Close();
@@ -126,6 +149,27 @@ namespace EmployeeManager.Controllers
                 }
             }
             return new JsonResult("Deleted");
+        }
+
+        [Route("SaveFile")]
+        [HttpPost]
+        public JsonResult SaveFile()
+        {
+            try
+            {
+                var httpRequest = Request.Form;
+                var postedFile = httpRequest.Files[0];
+                string filename=postedFile.FileName;
+                var physicalPath = this.env.ContentRootPath + "/Photos/"+filename;
+                using(var stream=new FileStream(physicalPath, FileMode.Create))
+                {
+                    postedFile.CopyTo(stream);
+                }
+                return new JsonResult(filename);
+            }catch (Exception ex)
+            {
+                return new JsonResult("anonymous.png");
+            }
         }
 
     }
