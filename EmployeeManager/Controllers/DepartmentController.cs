@@ -10,17 +10,18 @@ namespace EmployeeManager.Controllers
     [ApiController]
     public class DepartmentController : ControllerBase
     {
-        private readonly IConfiguration configuration;
-        public DepartmentController(IConfiguration configuration)
+        private readonly DataContext dataContext;
+        public DepartmentController(DataContext context)
         {
-            this.configuration = configuration;
+            this.dataContext = context;
         }
 
 
 
         [HttpGet]
-        public JsonResult Get()
+        public async Task<JsonResult> Get()
         {
+            /*
             string query = @"
                             select DepartmentId, DepartmentName from
                             dbo.Department
@@ -42,13 +43,18 @@ namespace EmployeeManager.Controllers
             }
 
             return new JsonResult(table);
+            */
+            
+            return new JsonResult(await this.dataContext.Departments.ToListAsync());
+
         }
 
 
 
         [HttpPost]
-        public JsonResult Post(Department dep)
+        public async Task<JsonResult> Post(Department dep)
         {
+            /*
             string query = @"
                             insert into dbo.Department values (@DepartmentName)
                             ";
@@ -68,14 +74,18 @@ namespace EmployeeManager.Controllers
                 }
             }
             return new JsonResult("Added Successfully");   
+            */
+            this.dataContext.Departments.Add(dep);
+            await this.dataContext.SaveChangesAsync();
+            return new JsonResult("success");
         }
 
 
        
 
         [HttpPut]
-        public JsonResult Put(Department dep)
-        {
+        public async Task<JsonResult> Put(Department dep)
+        {/*
             string query = @"
                             update  dbo.Department 
                             set DepartmentName =@DepartmentName
@@ -97,14 +107,24 @@ namespace EmployeeManager.Controllers
                     myCon.Close();
                 }
             }
-            return new JsonResult("Update done");
+            */
+            var department=await this.dataContext.Departments.FindAsync(dep.DepartmentId);
+            if(department==null)
+            {
+                return new JsonResult("Department not found");
+            }  
+            department.DepartmentName= dep.DepartmentName;
+            await this.dataContext.SaveChangesAsync();
+
+            return new JsonResult("ypdated");
         }
 
 
-
+        
         [HttpDelete("{id}")]
-        public JsonResult Delete(int id)
+        public async Task<JsonResult> Delete(int id)
         {
+            /*
             string query = @"
                             delete from dbo.Department 
                             
@@ -125,8 +145,21 @@ namespace EmployeeManager.Controllers
                     myCon.Close();
                 }
             }
+            */
+
+            var department = await this.dataContext.Departments.FindAsync(id);
+            if (department == null)
+            {
+                return new JsonResult("Department not found");
+            }
+
+            dataContext.Departments.Remove(department);
+            await this.dataContext.SaveChangesAsync();
+
             return new JsonResult("Deleted");
         }
 
+    
+       
     }
 }

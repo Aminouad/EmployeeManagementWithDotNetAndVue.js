@@ -7,9 +7,11 @@ using System.Data;
 using System.Data.SqlClient;
 using Microsoft.Extensions.FileProviders;
 using Newtonsoft.Json.Serialization;
-
 namespace EmployeeManager.Controllers
 {
+    /*
+
+
     [Route("api/[controller]")]
     [ApiController]
     public class EmployeeController : ControllerBase
@@ -173,4 +175,5 @@ namespace EmployeeManager.Controllers
         }
 
     }
+    */
 }
